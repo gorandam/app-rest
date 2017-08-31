@@ -23,7 +23,7 @@ Route::group(['prefix' => 'api/v1'], function() {// Here we group all routes whi
         'except' => ['edit', 'create'] // Except this routes
     ]);
 
-    Route::resource('meeting/registration', 'RegistrationController', [ //Here we are creating meeting resource controller routes except edit and create
+    Route::resource('meeting/registration', 'RegistrationController', [ //Here we are creating registration resource controller routes except edit and create
         'only' => ['store', 'destroy'] // only this routes
     ]);
 
