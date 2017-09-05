@@ -8,11 +8,55 @@ class AuthController extends Controller
 {
     public function store(Request $request)
     {
-      return "It works!";
+      $this->validate($request, [
+        'name' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|min:5'
+      ]);
+
+      $name = $request->input('name');//Here we retrieve information for creating our user
+      $email = $request->input('email');
+      $password = $request->input('password');
+
+      $user = [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'signin' => [
+                'href' => 'api/v1/user/signin',
+                'method' => 'POST',
+                'params' => 'email, password'
+            ]
+        ];
+
+      $response = [
+            'msg' => 'User created',
+            'user' => $user
+        ];
+
+      return response()->json($response, 201);
     }
 
     public function signin(Request $request)
     {
-      return "It works!";
+      $this->validate($request, [
+        'email' => 'required|email',
+        'password' => 'required'
+      ]);
+      $email = $request->input('email');// Here we retrieve email(unique indetification criteria) and password...
+      $password = $request->input('password');
+
+      $user = [
+            'name' => 'Name',
+            'email' => $email,
+            'password' => $password
+        ];
+
+      $response = [
+            'msg' => 'User signed in',
+            'user' => $user
+        ];
+
+      return response()->json($response, 200);
     }
 }

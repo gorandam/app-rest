@@ -6,8 +6,6 @@ use Illuminate\Http\Request;
 
 class RegistrationController extends Controller
 {
-
-
     /**
      * Store a newly created resource in storage.
      *
@@ -16,7 +14,38 @@ class RegistrationController extends Controller
      */
     public function store(Request $request)
     {
-        return "It works!";
+        $this->validation($request, [
+          'meeting_id' => 'required',
+          'user_id' => 'required'
+        ]);
+        $meeting_id = $request->input('meeting_id');
+        $user_id = $request->input('user_id');
+
+        $meeting = [ // Here  we retrieve meeting from database to use it in response to send for wich meeting user is registered
+            'title' => 'Title',
+            'description' => 'Description',
+            'time' => 'Time',
+            'view_meeting' => [
+                'href' => 'api/v1/meeting/1',
+                'method' => 'GET'
+            ]
+        ];
+
+        $user = [ // Here we retrieve user for database to use it in response to send for wich user is registered
+            'name' => 'Name'
+        ];
+
+        $response = [ // Here we build the response in schema MESSAGE - DATA - link
+            'msg' => 'User registered for meeting',
+            'meeting' => $meeting,
+            'user' => $user,
+            'unregister' => [
+                'href' => 'api/v1/meeting/registration/1',
+                'method' => 'DELETE'
+            ]
+        ];
+
+        return response()->json($response, 201);
     }
 
 
@@ -28,6 +57,31 @@ class RegistrationController extends Controller
      */
     public function destroy($id)
     {
-        return "It works!";
+      $meeting = [
+          'title' => 'Title',
+          'description' => 'Description',
+          'time' => 'Time',
+          'view_meeting' => [
+              'href' => 'api/v1/meeting/1',
+              'method' => 'GET'
+          ]
+      ];
+
+      $user = [
+          'name' => 'Name'
+      ];
+
+      $response = [
+          'msg' => 'User unregistered for meeting',
+          'meeting' => $meeting,
+          'user' => $user,// Here we retrun only user name not email or password
+          'register' => [
+              'href' => 'api/v1/meeting/registration',
+              'method' => 'POST',
+              'params' => 'user_id, meeting_id'
+          ]
+      ];
+
+      return response()->json($response, 200);
     }
 }

@@ -17,7 +17,25 @@ class MeetingController extends Controller
      */
     public function index()
     {
-        return "It works!";
+      $meeting = [
+          'title' => 'Title',
+          'description' => 'Description',
+          'time' => 'Time',
+          'user_id' => 'User Id',
+          'view_meeting' => [
+              'href' => 'api/v1/meeting/1',
+              'method' => 'GET'
+          ]
+      ];
+
+      $response = [
+          'msg' => 'List of all Meetings',
+          'meetings' => [
+              $meeting,
+              $meeting
+          ]
+      ];
+      return response()->json($response, 200);
     }
 
     /**
@@ -28,7 +46,35 @@ class MeetingController extends Controller
      */
     public function store(Request $request)
     {
-        return "It works!";
+        $this->validate($request, [
+            'title' => 'required',
+            'description' => 'required',
+            'time' => 'required|date_format:YmdHie',// Here laravel uses buil-in php funcion for format dataes see documentation
+            'user_id' => 'required'
+        ]);
+
+        $title = $request->input('title');
+        $description = $request->input('description');
+        $time = $request->input('time');
+        $user_id = $request->input('user_id');
+        $meeting = [
+            'title' => $title,
+            'description' => $description,
+            'time' => $time,
+            'user_id' => $user_id,
+            'view_meeting' => [
+                'href' => 'api/v1/meeting/1',
+                'method' => 'GET'
+            ]
+        ];
+
+        $response = [
+            'msg' => 'Meeting created',
+            'meeting' => $meeting
+        ];
+
+        return response()->json($response, 201);
+
     }
 
     /**
@@ -39,7 +85,22 @@ class MeetingController extends Controller
      */
     public function show($id)
     {
-        return "It works!";
+      $meeting = [
+          'title' => 'Title',
+          'description' => 'Description',
+          'time' => 'Time',
+          'user_id' => 'User Id',
+          'view_meetings' => [
+              'href' => 'api/v1/meeting',
+              'method' => 'GET'
+          ]
+      ];
+
+      $response = [
+          'msg' => 'Meeting information',
+          'meeting' => $meeting
+      ];
+      return response()->json($response, 200);
     }
 
     /**
@@ -51,7 +112,33 @@ class MeetingController extends Controller
      */
     public function update(Request $request, $id)
     {
-        return "It works!";
+        $this->validate($request, [
+            'title' => 'required',
+            'description' => 'required',
+            'time' => 'required|date_format:YmdHie',// Here laravel uses buil-in php funcion for format dataes
+            'user_id' => 'required'
+        ]);
+        $title = $request->input('title');
+        $description = $request->input('description');
+        $time = $request->input('time');
+        $user_id = $request->input('user_id');
+
+        $meeting = [ // This simulate here database data, we dont have database here
+          'title' => $title,
+          'description' => $description,
+          'time' => $time,
+          'user_id' => $user_id,
+          'view_meeting' => [
+            'href' => 'api/v1/meeting/1',
+            'method' => 'GET'
+          ]
+        ];
+        $response = [ // This simulate here database data, we don't have database here
+          'msg' => 'Meeting updated',
+          'meeting' => $meeting
+        ];
+
+        return response()->json($response, 201);
     }
 
     /**
@@ -62,6 +149,15 @@ class MeetingController extends Controller
      */
     public function destroy($id)
     {
-        return "It works!";
+        $response = [
+            'msg' => 'Meeting deleted',
+            'create' => [
+                'href' => 'api/v1/meeting',
+                'method' => 'POST',
+                'params' => 'title, description, time'
+            ]
+        ];
+
+        return response()->json($response, 200);
     }
 }
