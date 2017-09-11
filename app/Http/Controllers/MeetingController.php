@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use App\Meeting;
 
 class MeetingController extends Controller
 {
@@ -17,23 +19,16 @@ class MeetingController extends Controller
      */
     public function index()
     {
-      $meeting = [
-          'title' => 'Title',
-          'description' => 'Description',
-          'time' => 'Time',
-          'user_id' => 'User Id',
-          'view_meeting' => [
-              'href' => 'api/v1/meeting/1',
-              'method' => 'GET'
-          ]
-      ];
-
+      $meetings = Meeting::all();
+      foreach($meetings as $meeting) {
+        $meeting->view_meeting = [// Here we want to add view_meeting to the our meating model instances
+            'href' => 'api/v1/meeting/' . $meeting->id,
+            'method' => 'GET'
+        ];
+      }
       $response = [
           'msg' => 'List of all Meetings',
-          'meetings' => [
-              $meeting,
-              $meeting
-          ]
+          'meetings' => $meetings
       ];
       return response()->json($response, 200);
     }
@@ -44,38 +39,44 @@ class MeetingController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $this->validate($request, [
-            'title' => 'required',
-            'description' => 'required',
-            'time' => 'required|date_format:YmdHie',// Here laravel uses buil-in php funcion for format dataes see documentation
-            'user_id' => 'required'
-        ]);
+     public function store(Request $request)
+     {
+         $this->validate($request, [
+             'title' => 'required',
+             'description' => 'required',
+             'time' => 'required|date_format:YmdHie',
+             'user_id' => 'required'
+         ]);
 
-        $title = $request->input('title');
-        $description = $request->input('description');
-        $time = $request->input('time');
-        $user_id = $request->input('user_id');
-        $meeting = [
-            'title' => $title,
-            'description' => $description,
-            'time' => $time,
-            'user_id' => $user_id,
-            'view_meeting' => [
-                'href' => 'api/v1/meeting/1',
-                'method' => 'GET'
-            ]
-        ];
+         $title = $request->input('title');
+         $description = $request->input('description');
+         $time = $request->input('time');
+         $user_id = $request->input('user_id');
 
-        $response = [
-            'msg' => 'Meeting created',
-            'meeting' => $meeting
-        ];
+         $meeting = new Meeting([
+             'time' => Carbon::createFromFormat('YmdHie', $time),
+             'title' => $title,
+             'description' => $description
+         ]);
+         if ($meeting->save()) {
+             $meeting->users()->attach($user_id);
+             $meeting->view_meeting = [
+                 'href' => 'api/v1/meeting/' . $meeting->id,
+                 'method' => 'GET'
+             ];
+             $message = [
+                 'msg' => 'Meeting created',
+                 'meeting' => $meeting
+             ];
+             return response()->json($message, 201);
+         }
 
-        return response()->json($response, 201);
+         $response = [
+             'msg' => 'Error during creationg'
+         ];
 
-    }
+         return response()->json($response, 404);
+     }
 
     /**
      * Display the specified resource.
@@ -85,16 +86,12 @@ class MeetingController extends Controller
      */
     public function show($id)
     {
-      $meeting = [
-          'title' => 'Title',
-          'description' => 'Description',
-          'time' => 'Time',
-          'user_id' => 'User Id',
-          'view_meetings' => [
+      $meeting = Meeting::with('users')->where('id', $id)->firstOrFail();// Here we use eager loading to create join query in background to retrieve meeting and all associated users
+      $meeting->view_meetings = [
               'href' => 'api/v1/meeting',
               'method' => 'GET'
-          ]
-      ];
+          ];
+
 
       $response = [
           'msg' => 'Meeting information',
