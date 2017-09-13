@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Meeting;// Here we use namespace to import Meeting class;
+use App\User;
 
 class RegistrationController extends Controller
 {
@@ -14,27 +16,39 @@ class RegistrationController extends Controller
      */
     public function store(Request $request)
     {
+        //Validation form input
         $this->validate($request, [
           'meeting_id' => 'required',
           'user_id' => 'required'
         ]);
+
+        //We retrieve data from HTTP request
         $meeting_id = $request->input('meeting_id');
         $user_id = $request->input('user_id');
 
-        $meeting = [ // Here  we retrieve meeting from database to use it in response to send for wich meeting user is registered
-            'title' => 'Title',
-            'description' => 'Description',
-            'time' => 'Time',
-            'view_meeting' => [
-                'href' => 'api/v1/meeting/1',
-                'method' => 'GET'
+        //Here we fetch meeting or user from database using findOrFail methods and our request data
+        $meeting = Meeting::findOrFail($meeting_id);
+        $user = User::findOrFail($user_id);
+
+        //Here we create dummy message witch will output default saying  that user is already register for a meeting
+        $message = [
+            'msg' => 'User is already registered for a meeting',
+            'user' => $user,
+            'meeting' => $meeting,
+            'unregister' => [
+                'href' => 'api/v1/meeting/registration/' . $meeting->id,
+                'method' => 'DELETE',
             ]
         ];
 
-        $user = [ // Here we retrieve user for database to use it in response to send for wich user is registered
-            'name' => 'Name'
-        ];
+        // Here we check if user of that ID already exists or registered with this meeting or conected for meeting I fetched here, and we use  $ message in the response
+        if ($meeting->users()->where('user_id', $user_id)->first()) {
+           return response()->json($message, 404); // Here we use $message in the body of the response
+        }
+        //Here if the user is not attachd to the meeting crete relations and save it between user model and meeting modle and save it in the pivot table
+        $user->meetings()->attach($meeting);
 
+        //Here we create response data for content property(body of our HTTP message)
         $response = [ // Here we build the response in schema MESSAGE - DATA - link
             'msg' => 'User registered for meeting',
             'meeting' => $meeting,
@@ -44,7 +58,7 @@ class RegistrationController extends Controller
                 'method' => 'DELETE'
             ]
         ];
-
+        //Here we create response object with json data in content property
         return response()->json($response, 201);
     }
 
@@ -57,24 +71,15 @@ class RegistrationController extends Controller
      */
     public function destroy($id)
     {
-      $meeting = [
-          'title' => 'Title',
-          'description' => 'Description',
-          'time' => 'Time',
-          'view_meeting' => [
-              'href' => 'api/v1/meeting/1',
-              'method' => 'GET'
-          ]
-      ];
+      //Here we first fetch meeting from the database and detach users
+      $meeting = Meeting::findOrFail($id);
+      $meeting->users()->detach();// Here we detach all users for our meeting and this will change when we add authentiocation
 
-      $user = [
-          'name' => 'Name'
-      ];
-
+      //Here we create response data for response message that meeting is unregistered
       $response = [
           'msg' => 'User unregistered for meeting',
           'meeting' => $meeting,
-          'user' => $user,// Here we retrun only user name not email or password
+          'user' => 'tbd',
           'register' => [
               'href' => 'api/v1/meeting/registration',
               'method' => 'POST',
@@ -82,6 +87,7 @@ class RegistrationController extends Controller
           ]
       ];
 
+      //Here we create response object with json data in content property
       return response()->json($response, 200);
     }
 }

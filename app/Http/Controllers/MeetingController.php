@@ -54,12 +54,12 @@ class MeetingController extends Controller
          $user_id = $request->input('user_id');
 
          $meeting = new Meeting([
-             'time' => Carbon::createFromFormat('YmdHie', $time),
+             'time' => Carbon::createFromFormat('YmdHie', $time),// Here we use Carbon package from php to set date in YmdHie format
              'title' => $title,
              'description' => $description
          ]);
          if ($meeting->save()) {
-             $meeting->users()->attach($user_id);
+             $meeting->users()->attach($user_id);// Here we use attach() method to save related data in the tables in the database;
              $meeting->view_meeting = [
                  'href' => 'api/v1/meeting/' . $meeting->id,
                  'method' => 'GET'
@@ -115,26 +115,38 @@ class MeetingController extends Controller
             'time' => 'required|date_format:YmdHie',// Here laravel uses buil-in php funcion for format dataes
             'user_id' => 'required'
         ]);
+
+        //Here we retrieve data from body of HTTP request
         $title = $request->input('title');
         $description = $request->input('description');
         $time = $request->input('time');
         $user_id = $request->input('user_id');
 
-        $meeting = [ // This simulate here database data, we dont have database here
-          'title' => $title,
-          'description' => $description,
-          'time' => $time,
-          'user_id' => $user_id,
-          'view_meeting' => [
-            'href' => 'api/v1/meeting/1',
-            'method' => 'GET'
-          ]
+
+        $meeting = Meeting::with('users')->findOrFail($id);//Here we retrieve Meeting instances with related users using eager loading and use findOrFail method to return error if meeting with  passed $id exists
+        if(!$meeting->users()->where('user_id', $user_id)->first()) { // Here we check if user_id passed inside body of HTTP request is ID registered for this meeting. We want only registerd users can update this meeting
+            return response()->json(['msg' => 'User not registered for meeting, update not successful'], 401);
+        };
+
+        // Here we update data to fetched meeting in the database
+        $meeting->time = Carbon::createFromFormat('YmdHie', $time);
+        $meeting->title = $title;
+        $meeting->description = $description;
+        if(!$meeting->update()) { //Here we use if statment and update() method to update data to the database, and if it fail (true) it return error
+            return response()->json(['msg' => 'Error during updating'], 404);
+        }
+
+        // Here we attaching link to the our meeting instance
+        $meeting->view_meeting = [
+          'href' => 'api/v1/meeting/' . $meeting->id,
+          'method' => 'GET'
         ];
-        $response = [ // This simulate here database data, we don't have database here
+        //Here we construct final json data and save it in $response variable
+        $response = [ //Here we construct final json data and save it in $response variable
           'msg' => 'Meeting updated',
           'meeting' => $meeting
         ];
-
+        //Here we construct final response object with json data
         return response()->json($response, 201);
     }
 
@@ -146,7 +158,18 @@ class MeetingController extends Controller
      */
     public function destroy($id)
     {
-        $response = [
+
+      $meeting = Meeting::with('users')->findOrFail($id);//Here we retrieve Meeting instances with related users using eager loading and use findOrFail method to return error if meeting with  passed $id exists
+      $users = $meeting->users;// Here we acess users key in relations property array in our Meeting instance
+      $meeting->users()->detach(); // Here we want to detach all users for this meeting
+      if (!$meeting->delete()) {// here after detaching I try to delete meeting, but if it fails I want to loop through all fetched $users and retached them to the meeting
+        foreach($users as $user) {
+            $meeting->users()->attach($user);
+        }
+        return response()->json(['msg' => 'deletion failed'], 404);
+      }
+      //Here we create response data for response message that meeting is actualy deleted
+      $response = [
             'msg' => 'Meeting deleted',
             'create' => [
                 'href' => 'api/v1/meeting',
