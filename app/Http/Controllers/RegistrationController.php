@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Meeting;// Here we use namespace to import Meeting class;
 use App\User;
+use JWTAuth;
 
 class RegistrationController extends Controller
 {
+    public function __construct() // Here we set middleware in our construct funtion to our constructor methods..
+    {
+      $this->middleware('jwt.auth'); // This middleware requires token to be sent with request
+    }
     /**
      * Store a newly created resource in storage.
      *
@@ -73,13 +78,24 @@ class RegistrationController extends Controller
     {
       //Here we first fetch meeting from the database and detach users
       $meeting = Meeting::findOrFail($id);
-      $meeting->users()->detach();// Here we detach all users for our meeting and this will change when we add authentiocation
+
+      // Here we parse token and extract user instance from it we do this because only the authenticated (passed jwt.auth middleware) users, and users that send the request can send ID to method
+      if (!$user = JWTAuth::parseToken()->authenticate()) { // this will first parse token and then with authenticate() extract authenticated User model instance from token. PS authentication is done in middleware, not here
+        return response()->json(['msg' => 'User not found'], 404);
+      }
+      // Here we check if user is sing up for this meeting
+      if(!$meeting->users()->where('user_id', $user->id)->first()) { // Here we check if user->id is ID registered for this meeting. We want only sign up users can delete this meeting
+          return response()->json(['msg' => 'User not registered for meeting, unregistration   not successful'], 401);
+      };
+
+      //Here we detach() user extracted from token(that send request) and that is registered for a meeting
+      $meeting->users()->detach($user->id);
 
       //Here we create response data for response message that meeting is unregistered
       $response = [
           'msg' => 'User unregistered for meeting',
           'meeting' => $meeting,
-          'user' => 'tbd',
+          'user' => $user,
           'register' => [
               'href' => 'api/v1/meeting/registration',
               'method' => 'POST',

@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Meeting;
+use JWTAuth;
 
 class MeetingController extends Controller
 {
     public function __construct() // Here we set middleware in our construct funtion to our constructor methods..
     {
-      //$this->middleware('name');
+      $this->middleware('jwt.auth', ['only' => [ // Here we specify to wich method we want to implement our middleware
+        'store', 'update', 'destroy'
+      ]]);
     }
     /**
      * Display a listing of the resource.
@@ -44,15 +47,21 @@ class MeetingController extends Controller
          $this->validate($request, [
              'title' => 'required',
              'description' => 'required',
-             'time' => 'required|date_format:YmdHie',
-             'user_id' => 'required'
+             'time' => 'required|date_format:YmdHie'
          ]);
 
+         // Here we parse token and extract user instance from it
+         if (!$user = JWTAuth::parseToken()->authenticate()) { // this will first parse token and then with authenticate extract authenticated User model instance from token PS authentication is done in middleware, not here
+           return response()->json(['msg' => 'User not found'], 404);
+         }
+
+         //Here we parse requent data from HTTP request body
          $title = $request->input('title');
          $description = $request->input('description');
          $time = $request->input('time');
-         $user_id = $request->input('user_id');
+         $user_id = $user->id;
 
+         //Here we create new meeting
          $meeting = new Meeting([
              'time' => Carbon::createFromFormat('YmdHie', $time),// Here we use Carbon package from php to set date in YmdHie format
              'title' => $title,
@@ -72,7 +81,7 @@ class MeetingController extends Controller
          }
 
          $response = [
-             'msg' => 'Error during creationg'
+             'msg' => 'Error during creating'
          ];
 
          return response()->json($response, 404);
@@ -112,15 +121,19 @@ class MeetingController extends Controller
         $this->validate($request, [
             'title' => 'required',
             'description' => 'required',
-            'time' => 'required|date_format:YmdHie',// Here laravel uses buil-in php funcion for format dataes
-            'user_id' => 'required'
+            'time' => 'required|date_format:YmdHie'// Here laravel uses buil-in php funcion for format dataes
         ]);
+
+        // Here we parse token and extract user instance from it
+        if (!$user = JWTAuth::parseToken()->authenticate()) { // this will first parse token and then with authenticate extract authenticated User model instance from token PS authentication is done in middleware, not here
+          return response()->json(['msg' => 'User not found'], 404);
+        }
 
         //Here we retrieve data from body of HTTP request
         $title = $request->input('title');
         $description = $request->input('description');
         $time = $request->input('time');
-        $user_id = $request->input('user_id');
+        $user_id = $user->id;
 
 
         $meeting = Meeting::with('users')->findOrFail($id);//Here we retrieve Meeting instances with related users using eager loading and use findOrFail method to return error if meeting with  passed $id exists
@@ -160,6 +173,14 @@ class MeetingController extends Controller
     {
 
       $meeting = Meeting::with('users')->findOrFail($id);//Here we retrieve Meeting instances with related users using eager loading and use findOrFail method to return error if meeting with  passed $id exists
+      // Here we parse token and extract user instance from it we do this because only the authenticated (passed jwt.auth middleware) users, and users that send the request can send ID to method
+      if (!$user = JWTAuth::parseToken()->authenticate()) { // this will first parse token and then with authenticate extract authenticated User model instance from token PS authentication is done in middleware, not here
+        return response()->json(['msg' => 'User not found'], 404);
+      }
+      // Here we check if user is sing up for this meeting
+      if(!$meeting->users()->where('user_id', $user->id)->first()) { // Here we check if user->id is ID registered for this meeting. We want only sign up users can delete this meeting
+          return response()->json(['msg' => 'User not registered for meeting, update not successful'], 401);
+      };
       $users = $meeting->users;// Here we acess users key in relations property array in our Meeting instance
       $meeting->users()->detach(); // Here we want to detach all users for this meeting
       if (!$meeting->delete()) {// here after detaching I try to delete meeting, but if it fails I want to loop through all fetched $users and retached them to the meeting
